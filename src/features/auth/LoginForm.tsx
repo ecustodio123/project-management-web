@@ -20,7 +20,9 @@ export function LoginForm() {
   const navigate = useNavigate()
   const location = useLocation()
   const { setSession } = useAuth()
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? paths.projects
+  const from =
+    (location.state as { from?: { pathname?: string } } | null)?.from
+      ?.pathname ?? paths.projects
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(schema),
@@ -32,20 +34,26 @@ export function LoginForm() {
 
   const mutation = useMutation({
     mutationFn: login,
-    onSuccess: (data) => {
-      setSession(data)
+    onSuccess: async (data) => {
+      await setSession(data)
       navigate(from, { replace: true })
     },
   })
 
   return (
-    <Stack component="form" spacing={2.5} onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+    <Stack
+      component="form"
+      spacing={2.5}
+      onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+    >
       <div>
         <Typography variant="h5">Log in</Typography>
         <Typography color="text.secondary">Use your portal account.</Typography>
       </div>
 
-      {mutation.isError ? <Alert severity="error">{getErrorMessage(mutation.error)}</Alert> : null}
+      {mutation.isError ? (
+        <Alert severity="error">{getErrorMessage(mutation.error)}</Alert>
+      ) : null}
 
       <TextField
         label="Email"
@@ -65,8 +73,13 @@ export function LoginForm() {
         helperText={form.formState.errors.password?.message}
         {...form.register('password')}
       />
-      <Button type="submit" variant="contained" size="large" disabled={mutation.isPending}>
-        {mutation.isPending ? 'Logging in...' : 'Log in'}
+      <Button
+        type="submit"
+        variant="contained"
+        size="large"
+        disabled={mutation.isPending}
+      >
+        {mutation.isPending ? "Logging in..." : "Log in"}
       </Button>
       <Typography color="text.secondary" variant="body2">
         Need an account? <Link to={paths.register}>Register</Link>

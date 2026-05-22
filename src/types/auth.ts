@@ -6,7 +6,7 @@ export type User = {
 }
 
 export type AuthResponse = {
-  token: string
+  access_token: string
   user: User
 }
 

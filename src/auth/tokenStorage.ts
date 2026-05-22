@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'pm_access_token'
+const TOKEN_KEY = 'access_token'
 
 export const tokenStorage = {
   get: () => localStorage.getItem(TOKEN_KEY),

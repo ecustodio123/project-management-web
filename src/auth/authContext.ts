@@ -6,7 +6,7 @@ export type AuthContextValue = {
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
-  setSession: (auth: AuthResponse) => void
+  setSession: (auth: AuthResponse) => Promise<void>
   logout: () => void
 }
 

@@ -32,8 +32,8 @@ export function RegisterForm() {
 
   const mutation = useMutation({
     mutationFn: registerUser,
-    onSuccess: (data) => {
-      setSession(data)
+    onSuccess: async (data) => {
+      await setSession(data)
       navigate(paths.projects, { replace: true })
     },
   })
