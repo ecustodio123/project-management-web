@@ -6,7 +6,9 @@ import { Button, InputAdornment, MenuItem, Stack, TextField } from '@mui/materia
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { useNotification } from '../../providers/notificationContext'
 import type { TaskPriority } from '../../types/task'
+import { getErrorMessage } from '../../utils/getErrorMessage'
 import { taskKeys } from './taskKeys'
 import { createTask } from './tasksApi'
 
@@ -24,6 +26,7 @@ type TaskCreateFormProps = {
 
 export function TaskCreateForm({ projectId }: TaskCreateFormProps) {
   const queryClient = useQueryClient()
+  const { notify } = useNotification()
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -38,6 +41,10 @@ export function TaskCreateForm({ projectId }: TaskCreateFormProps) {
     onSuccess: () => {
       form.reset({ title: '', description: '', priority: 'MEDIUM' })
       queryClient.invalidateQueries({ queryKey: taskKeys.byProject(projectId) })
+      notify('Tarea creada correctamente.')
+    },
+    onError: (error) => {
+      notify(getErrorMessage(error), 'error')
     },
   })
 

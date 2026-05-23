@@ -6,6 +6,8 @@ import { Button, InputAdornment, Stack, TextField } from '@mui/material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { useNotification } from '../../providers/notificationContext'
+import { getErrorMessage } from '../../utils/getErrorMessage'
 import { projectKeys } from './projectKeys'
 import { createProject } from './projectsApi'
 
@@ -18,6 +20,7 @@ type ProjectFormValues = z.infer<typeof schema>
 
 export function ProjectCreateForm() {
   const queryClient = useQueryClient()
+  const { notify } = useNotification()
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -31,6 +34,10 @@ export function ProjectCreateForm() {
     onSuccess: () => {
       form.reset()
       queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      notify('Proyecto creado correctamente.')
+    },
+    onError: (error) => {
+      notify(getErrorMessage(error), 'error')
     },
   })
 

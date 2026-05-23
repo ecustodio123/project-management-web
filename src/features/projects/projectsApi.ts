@@ -2,6 +2,11 @@ import { api } from '../../api/http'
 import type { ActivityItem } from '../../types/activity'
 import type { Project, ProjectInput, ProjectMember, ProjectRole } from '../../types/project'
 
+type ProjectMembersResponse = {
+  members?: ProjectMember[]
+  items?: ProjectMember[]
+}
+
 export async function getProjects() {
   const { data } = await api.get<Project[]>('/projects')
   return data
@@ -27,8 +32,13 @@ export async function deleteProject(id: string) {
 }
 
 export async function getProjectMembers(projectId: string) {
-  const { data } = await api.get<ProjectMember[]>(`/projects/${projectId}/members`)
-  return data
+  const { data } = await api.get<ProjectMembersResponse | ProjectMember[]>(`/projects/${projectId}/members`)
+
+  if (Array.isArray(data)) {
+    return data
+  }
+
+  return data.members ?? data.items ?? []
 }
 
 export async function addProjectMember(projectId: string, payload: { email: string; role: ProjectRole }) {

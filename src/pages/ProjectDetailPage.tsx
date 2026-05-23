@@ -4,7 +4,7 @@ import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined
 import GroupsIcon from '@mui/icons-material/Groups'
 import HistoryIcon from '@mui/icons-material/History'
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
-import { Alert, Avatar, Box, Button, Chip, Divider, Grid, Paper, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, Divider, Grid, Paper, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
@@ -16,6 +16,7 @@ import { TaskDetailModal } from '../features/tasks/TaskDetailModal'
 import { TaskList } from '../features/tasks/TaskList'
 import { taskKeys } from '../features/tasks/taskKeys'
 import { getProjectTasks } from '../features/tasks/tasksApi'
+import { ProjectMembersPanel } from '../features/projects/ProjectMembersPanel'
 import { projectKeys } from '../features/projects/projectKeys'
 import { getProject, getProjectActivity, getProjectMembers } from '../features/projects/projectsApi'
 import { usePageTitle } from '../hooks/usePageTitle'
@@ -189,34 +190,12 @@ export function ProjectDetailPage() {
           ) : null}
 
           {tab === 1 ? (
-            <Stack spacing={2.5}>
-              <SectionHeader title="Miembros" description="Personas con acceso y rol dentro de este proyecto." />
-              {membersQuery.isLoading ? <LoadingState /> : null}
-              {membersQuery.isError ? <Alert severity="error">{getErrorMessage(membersQuery.error)}</Alert> : null}
-              {!membersQuery.isLoading && members.length === 0 ? (
-                <EmptyState title="Sin miembros" message="Cuando agregues miembros al proyecto aparecerán aquí." />
-              ) : null}
-              <Grid container spacing={2}>
-                {members.map((member) => (
-                  <Grid key={member.userId} size={{ xs: 12, md: 6 }}>
-                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
-                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                        <Avatar sx={{ bgcolor: '#172033' }}>
-                          {(member.user?.name || member.userId).charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography sx={{ fontWeight: 800 }}>{member.user?.name || member.userId}</Typography>
-                          <Typography color="text.secondary" variant="body2">
-                            {member.user?.email || 'Sin correo'}
-                          </Typography>
-                        </Box>
-                        <Chip label={member.role} size="small" sx={{ bgcolor: '#eff6ff', color: 'primary.main', fontWeight: 700 }} />
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            </Stack>
+            <ProjectMembersPanel
+              projectId={projectId}
+              members={members}
+              isLoading={membersQuery.isLoading}
+              error={membersQuery.error}
+            />
           ) : null}
 
           {tab === 2 ? (
@@ -263,6 +242,7 @@ export function ProjectDetailPage() {
         <TaskDetailModal
           open={Boolean(taskId)}
           taskId={taskId}
+          projectId={projectId}
           onClose={() => navigate(paths.projectDetail(projectId))}
         />
       ) : null}
