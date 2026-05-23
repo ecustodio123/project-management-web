@@ -1,15 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, MenuItem, Stack, TextField } from '@mui/material'
+import AddTaskIcon from '@mui/icons-material/AddTask'
+import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
+import TitleOutlinedIcon from '@mui/icons-material/TitleOutlined'
+import { Button, InputAdornment, MenuItem, Stack, TextField } from '@mui/material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import type { TaskPriority, TaskStatus } from '../../types/task'
+import type { TaskPriority } from '../../types/task'
 import { taskKeys } from './taskKeys'
 import { createTask } from './tasksApi'
 
 const schema = z.object({
   title: z.string().min(2, 'Task title must be at least 2 characters'),
-  status: z.enum(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']),
+  description: z.string().optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
 })
 
@@ -25,7 +28,7 @@ export function TaskCreateForm({ projectId }: TaskCreateFormProps) {
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
-      status: 'TODO',
+      description: '',
       priority: 'MEDIUM',
     },
   })
@@ -33,7 +36,7 @@ export function TaskCreateForm({ projectId }: TaskCreateFormProps) {
   const mutation = useMutation({
     mutationFn: (values: TaskFormValues) => createTask(projectId, values),
     onSuccess: () => {
-      form.reset({ title: '', status: 'TODO', priority: 'MEDIUM' })
+      form.reset({ title: '', description: '', priority: 'MEDIUM' })
       queryClient.invalidateQueries({ queryKey: taskKeys.byProject(projectId) })
     },
   })
@@ -42,7 +45,7 @@ export function TaskCreateForm({ projectId }: TaskCreateFormProps) {
     <Stack
       component="form"
       direction={{ xs: 'column', md: 'row' }}
-      spacing={2}
+      spacing={1.5}
       onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
     >
       <TextField
@@ -51,15 +54,34 @@ export function TaskCreateForm({ projectId }: TaskCreateFormProps) {
         fullWidth
         error={Boolean(form.formState.errors.title)}
         helperText={form.formState.errors.title?.message}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <TitleOutlinedIcon color="action" fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
         {...form.register('title')}
       />
-      <TextField select label="Status" size="small" sx={{ minWidth: 180 }} {...form.register('status')}>
-        {taskStatusOptions.map((status) => (
-          <MenuItem key={status.value} value={status.value}>
-            {status.label}
-          </MenuItem>
-        ))}
-      </TextField>
+      <TextField
+        label="Description"
+        size="small"
+        fullWidth
+        error={Boolean(form.formState.errors.description)}
+        helperText={form.formState.errors.description?.message}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <NotesOutlinedIcon color="action" fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
+        {...form.register('description')}
+      />
       <TextField select label="Priority" size="small" sx={{ minWidth: 160 }} {...form.register('priority')}>
         {taskPriorityOptions.map((priority) => (
           <MenuItem key={priority.value} value={priority.value}>
@@ -67,19 +89,18 @@ export function TaskCreateForm({ projectId }: TaskCreateFormProps) {
           </MenuItem>
         ))}
       </TextField>
-      <Button type="submit" variant="contained" disabled={mutation.isPending} sx={{ minWidth: 120 }}>
+      <Button
+        type="submit"
+        variant="contained"
+        startIcon={<AddTaskIcon />}
+        disabled={mutation.isPending}
+        sx={{ minWidth: 130, textTransform: 'none', fontWeight: 800 }}
+      >
         {mutation.isPending ? 'Adding...' : 'Add task'}
       </Button>
     </Stack>
   )
 }
-
-const taskStatusOptions: Array<{ value: TaskStatus; label: string }> = [
-  { value: 'TODO', label: 'To do' },
-  { value: 'IN_PROGRESS', label: 'In progress' },
-  { value: 'REVIEW', label: 'Review' },
-  { value: 'DONE', label: 'Done' },
-]
 
 const taskPriorityOptions: Array<{ value: TaskPriority; label: string }> = [
   { value: 'LOW', label: 'Low' },

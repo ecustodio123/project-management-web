@@ -1,9 +1,19 @@
 import { api } from '../../api/http'
 import type { Comment, CommentInput } from '../../types/comment'
 
+type TaskCommentsResponse = {
+  comments?: Comment[]
+  items?: Comment[]
+}
+
 export async function getTaskComments(taskId: string) {
-  const { data } = await api.get<Comment[]>(`/tasks/${taskId}/comments`)
-  return data
+  const { data } = await api.get<TaskCommentsResponse | Comment[]>(`/tasks/${taskId}/comments`)
+
+  if (Array.isArray(data)) {
+    return data
+  }
+
+  return data.comments ?? data.items ?? []
 }
 
 export async function createComment(taskId: string, payload: CommentInput) {

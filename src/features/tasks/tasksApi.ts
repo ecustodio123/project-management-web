@@ -1,9 +1,19 @@
 import { api } from '../../api/http'
 import type { Task, TaskInput } from '../../types/task'
 
+type ProjectTasksResponse = {
+  tasks?: Task[]
+  items?: Task[]
+}
+
 export async function getProjectTasks(projectId: string) {
-  const { data } = await api.get<Task[]>(`/projects/${projectId}/tasks`)
-  return data
+  const { data } = await api.get<ProjectTasksResponse | Task[]>(`/projects/${projectId}/tasks`)
+
+  if (Array.isArray(data)) {
+    return data
+  }
+
+  return data.tasks ?? data.items ?? []
 }
 
 export async function createTask(projectId: string, payload: TaskInput) {

@@ -1,5 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Stack, TextField } from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
+import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
+import { Button, InputAdornment, Stack, TextField } from '@mui/material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -35,27 +38,51 @@ export function ProjectCreateForm() {
     <Stack
       component="form"
       direction={{ xs: 'column', md: 'row' }}
-      spacing={2}
+      spacing={1.5}
       onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
     >
       <TextField
-        label="Project name"
+        label="Nombre del proyecto"
         size="small"
-        sx={{ minWidth: 240 }}
+        sx={{ minWidth: { xs: '100%', md: 260 } }}
         error={Boolean(form.formState.errors.name)}
         helperText={form.formState.errors.name?.message}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <WorkOutlineOutlinedIcon color="action" fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
         {...form.register('name')}
       />
       <TextField
-        label="Description"
+        label="Descripción"
         size="small"
         fullWidth
         error={Boolean(form.formState.errors.description)}
         helperText={form.formState.errors.description?.message}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <DescriptionOutlinedIcon color="action" fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
         {...form.register('description')}
       />
-      <Button type="submit" variant="contained" disabled={mutation.isPending} sx={{ minWidth: 140 }}>
-        {mutation.isPending ? 'Creating...' : 'New project'}
+      <Button
+        type="submit"
+        variant="contained"
+        startIcon={<AddIcon />}
+        disabled={mutation.isPending}
+        sx={{ minWidth: 150, textTransform: 'none', fontWeight: 800 }}
+      >
+        {mutation.isPending ? 'Creando...' : 'Crear proyecto'}
       </Button>
     </Stack>
   )

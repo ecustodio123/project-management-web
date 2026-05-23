@@ -3,4 +3,5 @@ export const paths = {
   register: '/register',
   projects: '/projects',
   projectDetail: (id: string) => `/projects/${id}`,
+  taskDetail: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}`,
 }
