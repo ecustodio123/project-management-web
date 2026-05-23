@@ -1,6 +1,6 @@
 import { api } from '../../api/http'
 import type { ActivityItem } from '../../types/activity'
-import type { Project, ProjectInput, ProjectMember } from '../../types/project'
+import type { Project, ProjectInput, ProjectMember, ProjectRole } from '../../types/project'
 
 export async function getProjects() {
   const { data } = await api.get<Project[]>('/projects')
@@ -31,12 +31,12 @@ export async function getProjectMembers(projectId: string) {
   return data
 }
 
-export async function addProjectMember(projectId: string, payload: { email: string; role: ProjectMember['role'] }) {
+export async function addProjectMember(projectId: string, payload: { email: string; role: ProjectRole }) {
   const { data } = await api.post<ProjectMember>(`/projects/${projectId}/members`, payload)
   return data
 }
 
-export async function updateProjectMember(projectId: string, userId: string, payload: { role: ProjectMember['role'] }) {
+export async function updateProjectMember(projectId: string, userId: string, payload: { role: ProjectRole }) {
   const { data } = await api.patch<ProjectMember>(`/projects/${projectId}/members/${userId}`, payload)
   return data
 }

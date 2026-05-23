@@ -90,9 +90,9 @@ export function ProjectDetailPage() {
               {membersQuery.isError ? <Alert severity="error">{getErrorMessage(membersQuery.error)}</Alert> : null}
               {membersQuery.data?.map((member) => (
                 <Paper key={member.userId} variant="outlined" sx={{ p: 2 }}>
-                  <Typography sx={{ fontWeight: 600 }}>{member.name}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{member.user?.name || member.userId}</Typography>
                   <Typography color="text.secondary">
-                    {member.email} · {member.role}
+                    {member.user?.email || 'No email'} · {member.role}
                   </Typography>
                 </Paper>
               ))}
@@ -107,7 +107,7 @@ export function ProjectDetailPage() {
                 <Paper key={item.id} variant="outlined" sx={{ p: 2 }}>
                   <Typography>{item.message}</Typography>
                   <Typography color="text.secondary" variant="body2">
-                    {item.actorName || 'System'} {item.createdAt ? `· ${new Date(item.createdAt).toLocaleString()}` : ''}
+                    {item.user?.name || 'System'} · {new Date(item.createdAt).toLocaleString()}
                   </Typography>
                 </Paper>
               ))}

@@ -1,4 +1,4 @@
-import { Chip, Grid, Paper, Stack, Typography } from '@mui/material'
+import { Grid, Paper, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router'
 import { EmptyState } from '../../components/EmptyState'
 import type { Project } from '../../types/project'
@@ -29,13 +29,12 @@ export function ProjectList({ projects }: ProjectListProps) {
               '&:hover': { borderColor: 'primary.main' },
             }}
           >
-            <Stack spacing={1}>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="h6">{project.name}</Typography>
-                {project.status ? <Chip label={project.status} size="small" /> : null}
-              </Stack>
-              <Typography color="text.secondary" sx={{ minHeight: 48 }}>
-                {project.description || 'No description'}
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="h6">{project.name}</Typography>
+                </Stack>
+                <Typography color="text.secondary" sx={{ minHeight: 48 }}>
+                  {project.description || 'No description'}
               </Typography>
             </Stack>
           </Paper>

@@ -6,12 +6,12 @@ import { ProjectDetailPage } from '../pages/ProjectDetailPage'
 import { ProjectsPage } from '../pages/ProjectsPage'
 import { RegisterPage } from '../pages/RegisterPage'
 import { ProtectedRoute } from './ProtectedRoute'
-import { PublicOnlyRoute } from './PublicOnlyRoute'
+import { PublicRoute } from './PublicRoute'
 import { paths } from './paths'
 
 export const router = createBrowserRouter([
   {
-    element: <PublicOnlyRoute />,
+    element: <PublicRoute />,
     children: [
       {
         element: <AuthLayout />,
