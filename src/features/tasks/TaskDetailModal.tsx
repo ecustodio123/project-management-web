@@ -1,7 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import CloseIcon from '@mui/icons-material/Close'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import DownloadIcon from '@mui/icons-material/Download'
+import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined'
 import SendIcon from '@mui/icons-material/Send'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
 import {
   Alert,
   Avatar,
@@ -20,16 +24,19 @@ import {
   Typography,
 } from '@mui/material'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { LoadingState } from '../../components/LoadingState'
 import { commentKeys } from '../comments/commentKeys'
-import { createComment, getTaskComments } from '../comments/commentsApi'
+import { createComment, deleteComment, getTaskComments } from '../comments/commentsApi'
+import { fileKeys } from '../files/fileKeys'
+import { deleteFile, downloadFile, getTaskFiles, uploadTaskFile } from '../files/filesApi'
 import { taskKeys } from './taskKeys'
 import { getTask } from './tasksApi'
 import { getErrorMessage } from '../../utils/getErrorMessage'
 import type { Task } from '../../types/task'
+import type { TaskFile } from '../../types/file'
 
 const commentSchema = z.object({
   content: z.string().min(1, 'Escribe un comentario'),
@@ -72,6 +79,12 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
     enabled: open && Boolean(taskId),
   })
 
+  const filesQuery = useQuery({
+    queryKey: fileKeys.byTask(taskId),
+    queryFn: () => getTaskFiles(taskId),
+    enabled: open && Boolean(taskId),
+  })
+
   const form = useForm<CommentFormValues>({
     resolver: zodResolver(commentSchema),
     defaultValues: {
@@ -87,8 +100,64 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
     },
   })
 
+  const deleteCommentMutation = useMutation({
+    mutationFn: deleteComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: commentKeys.byTask(taskId) })
+    },
+  })
+
+  const uploadFileMutation = useMutation({
+    mutationFn: (file: File) => uploadTaskFile(taskId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fileKeys.byTask(taskId) })
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) })
+    },
+  })
+
+  const deleteFileMutation = useMutation({
+    mutationFn: deleteFile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fileKeys.byTask(taskId) })
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) })
+    },
+  })
+
+  const downloadFileMutation = useMutation({
+    mutationFn: async (file: TaskFile) => {
+      const download = await downloadFile(file.id)
+      const anchor = document.createElement('a')
+
+      if (download.type === 'url') {
+        anchor.href = download.url
+        anchor.target = '_blank'
+        anchor.rel = 'noreferrer'
+      } else {
+        const url = URL.createObjectURL(download.blob)
+        anchor.href = url
+        anchor.download = download.filename ?? file.originalName
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+      }
+
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+    },
+  })
+
   const task = taskQuery.data
   const comments = commentsQuery.data ?? []
+  const files = filesQuery.data ?? []
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+
+    if (file) {
+      uploadFileMutation.mutate(file)
+    }
+
+    event.target.value = ''
+  }
 
   return (
     <Dialog
@@ -164,6 +233,94 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
               <Divider />
 
               <Stack spacing={2}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' } }}
+                >
+                  <Box>
+                    <Typography variant="h6">Adjuntos</Typography>
+                    <Typography color="text.secondary" variant="body2">
+                      Archivos relacionados al trabajo de este ticket.
+                    </Typography>
+                  </Box>
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    startIcon={<UploadFileIcon />}
+                    disabled={uploadFileMutation.isPending}
+                    sx={{ textTransform: 'none', fontWeight: 800 }}
+                  >
+                    {uploadFileMutation.isPending ? 'Subiendo...' : 'Subir archivo'}
+                    <input type="file" hidden onChange={handleFileChange} />
+                  </Button>
+                </Stack>
+
+                {uploadFileMutation.isError ? <Alert severity="error">{getErrorMessage(uploadFileMutation.error)}</Alert> : null}
+                {deleteFileMutation.isError ? <Alert severity="error">{getErrorMessage(deleteFileMutation.error)}</Alert> : null}
+                {downloadFileMutation.isError ? <Alert severity="error">{getErrorMessage(downloadFileMutation.error)}</Alert> : null}
+                {filesQuery.isLoading ? <LoadingState /> : null}
+                {filesQuery.isError ? <Alert severity="error">{getErrorMessage(filesQuery.error)}</Alert> : null}
+                {!filesQuery.isLoading && files.length === 0 ? (
+                  <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, textAlign: 'center' }}>
+                    <Typography sx={{ fontWeight: 800 }}>Sin adjuntos</Typography>
+                    <Typography color="text.secondary">Sube archivos para documentar este ticket.</Typography>
+                  </Paper>
+                ) : null}
+
+                <Stack spacing={1}>
+                  {files.map((file) => (
+                    <Paper key={file.id} variant="outlined" sx={{ p: 1.5, borderRadius: 3 }}>
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 2,
+                            display: 'grid',
+                            placeItems: 'center',
+                            bgcolor: '#eff6ff',
+                            color: 'primary.main',
+                          }}
+                        >
+                          <InsertDriveFileOutlinedIcon fontSize="small" />
+                        </Box>
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography sx={{ fontWeight: 800 }} noWrap>
+                            {file.originalName}
+                          </Typography>
+                          <Typography color="text.secondary" variant="caption">
+                            {formatFileSize(file.size)} · {formatDateTime(file.createdAt)}
+                          </Typography>
+                        </Box>
+                        <Tooltip title="Descargar archivo">
+                          <IconButton
+                            aria-label="Descargar archivo"
+                            onClick={() => downloadFileMutation.mutate(file)}
+                            disabled={downloadFileMutation.isPending}
+                          >
+                            <DownloadIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar archivo">
+                          <IconButton
+                            aria-label="Eliminar archivo"
+                            color="error"
+                            onClick={() => deleteFileMutation.mutate(file.id)}
+                            disabled={deleteFileMutation.isPending}
+                          >
+                            <DeleteOutlineOutlinedIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Stack>
+
+              <Divider />
+
+              <Stack spacing={2}>
                 <Box>
                   <Typography variant="h6">Comentarios</Typography>
                   <Typography color="text.secondary" variant="body2">
@@ -227,10 +384,24 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
                           </Stack>
                           <Typography sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>{comment.content}</Typography>
                         </Box>
+                        <Tooltip title="Eliminar comentario">
+                          <IconButton
+                            aria-label="Eliminar comentario"
+                            color="error"
+                            onClick={() => deleteCommentMutation.mutate(comment.id)}
+                            disabled={deleteCommentMutation.isPending}
+                            size="small"
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </Stack>
                     </Paper>
                   ))}
                 </Stack>
+                {deleteCommentMutation.isError ? (
+                  <Alert severity="error">{getErrorMessage(deleteCommentMutation.error)}</Alert>
+                ) : null}
               </Stack>
             </Stack>
 
@@ -300,4 +471,14 @@ function formatDateTime(value?: string | null) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function formatFileSize(size?: number) {
+  if (!size) return '0 KB'
+
+  if (size < 1024 * 1024) {
+    return `${Math.ceil(size / 1024)} KB`
+  }
+
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
