@@ -1,12 +1,10 @@
 import { createContext, useContext } from 'react'
-import type { AuthResponse, User } from '../types/auth'
+import type { User } from '../types/auth'
 
 export type AuthContextValue = {
   user: User | null
-  token: string | null
   isAuthenticated: boolean
   isLoading: boolean
-  setSession: (auth: AuthResponse) => Promise<void>
   completeCognitoLogin: () => Promise<User>
   logout: () => Promise<void>
 }

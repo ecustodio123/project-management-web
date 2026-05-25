@@ -13,15 +13,13 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
+import { signIn } from "aws-amplify/auth";
 import { paths } from "../../routes/paths";
 import { getErrorMessage } from "../../utils/getErrorMessage";
-import { login } from "./authApi";
-import { signIn } from "aws-amplify/auth";
 import { useAuth } from "../../auth/authContext";
 
 const schema = z.object({
@@ -34,8 +32,12 @@ type LoginFormValues = z.infer<typeof schema>;
 export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setSession, completeCognitoLogin } = useAuth();
+  const { completeCognitoLogin } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState<unknown>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const from =
     (location.state as { from?: { pathname?: string } } | null)?.from
       ?.pathname ?? paths.projects;
@@ -48,8 +50,11 @@ export function LoginForm() {
     },
   });
 
-  const handleCognitoLogin = form.handleSubmit(async (values) => {
+  const handleLogin = form.handleSubmit(async (values) => {
     try {
+      setLoginError(null);
+      setIsSubmitting(true);
+
       await signIn({
         username: values.email,
         password: values.password,
@@ -59,44 +64,37 @@ export function LoginForm() {
 
       navigate(from, { replace: true });
     } catch (error) {
+      setLoginError(error);
       console.error("COGNITO LOGIN ERROR", error);
+    } finally {
+      setIsSubmitting(false);
     }
-  });
-
-  const mutation = useMutation({
-    mutationFn: login,
-    onSuccess: async (data) => {
-      await setSession(data);
-      navigate(from, { replace: true });
-    },
   });
 
   return (
     <Stack
       component="form"
       spacing={3}
-      onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+      onSubmit={handleLogin}
       sx={{ width: "100%", maxWidth: 420, mx: "auto" }}
     >
       <Stack spacing={1}>
-        <Typography
-          color="primary"
-          sx={{ fontWeight: 800, letterSpacing: 0 }}
-          variant="body2"
-        >
+        <Typography color="primary" sx={{ fontWeight: 800 }} variant="body2">
           Bienvenido de vuelta
         </Typography>
+
         <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
           Inicia sesión
         </Typography>
+
         <Typography color="text.secondary">
           Accede a tus proyectos, tareas y conversaciones con clientes.
         </Typography>
       </Stack>
 
-      {mutation.isError ? (
+      {loginError ? (
         <Alert severity="error" sx={{ borderRadius: 2 }}>
-          {getErrorMessage(mutation.error)}
+          {getErrorMessage(loginError)}
         </Alert>
       ) : null}
 
@@ -119,6 +117,7 @@ export function LoginForm() {
           }}
           {...form.register("email")}
         />
+
         <TextField
           label="Contraseña"
           type={showPassword ? "text" : "password"}
@@ -136,6 +135,7 @@ export function LoginForm() {
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton
+                    type="button"
                     aria-label={
                       showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
                     }
@@ -158,11 +158,10 @@ export function LoginForm() {
 
       <Stack spacing={2}>
         <Button
-          type="button"
+          type="submit"
           variant="contained"
           size="large"
-          disabled={mutation.isPending}
-          onClick={handleCognitoLogin}
+          disabled={isSubmitting}
           sx={{
             py: 1.35,
             fontWeight: 800,
@@ -170,8 +169,9 @@ export function LoginForm() {
             boxShadow: "0 12px 24px rgba(37, 99, 235, 0.24)",
           }}
         >
-          {mutation.isPending ? "Ingresando..." : "Ingresar"}
+          {isSubmitting ? "Ingresando..." : "Ingresar"}
         </Button>
+
         <Box
           sx={{
             border: "1px solid",
