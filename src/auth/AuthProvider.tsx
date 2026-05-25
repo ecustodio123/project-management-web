@@ -1,97 +1,134 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { getMe } from '../features/auth/authApi'
-import type { AuthResponse, User } from '../types/auth'
-import { AuthContext, type AuthContextValue } from './authContext'
-import { tokenStorage } from './tokenStorage'
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { getMe, syncCognitoUser } from "../features/auth/authApi";
+import type { AuthResponse, User } from "../types/auth";
+import { AuthContext } from "./authContext";
+import { tokenStorage } from "./tokenStorage";
+import { fetchAuthSession, signOut } from "aws-amplify/auth";
 
 type AuthProviderProps = {
-  children: ReactNode
-}
+  children: ReactNode;
+};
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const queryClient = useQueryClient()
-  const [token, setToken] = useState<string | null>(() => tokenStorage.get())
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient();
+
+  const [token, setToken] = useState<string | null>(() => tokenStorage.get());
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const completeCognitoLogin = useCallback(async () => {
+    const session = await fetchAuthSession();
+    const idToken = session.tokens?.idToken?.toString();
+
+    if (!idToken) {
+      throw new Error("Missing Cognito ID token");
+    }
+
+    const syncedUser = await syncCognitoUser(idToken);
+
+    tokenStorage.set(idToken);
+    setToken(idToken);
+    setUser(syncedUser);
+
+    return syncedUser;
+  }, []);
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     async function initializeAuth() {
-      const storedToken = tokenStorage.get()
-
-      if (!storedToken) {
-        if (isMounted) {
-          setIsLoading(false)
-        }
-        return
-      }
-
       try {
-        const currentUser = await getMe()
+        const storedToken = tokenStorage.get();
 
-        if (isMounted) {
-          setToken(storedToken)
-          setUser(currentUser)
+        if (storedToken) {
+          const currentUser = await getMe();
+
+          if (!isMounted) return;
+
+          setToken(storedToken);
+          setUser(currentUser);
+          return;
         }
+
+        const session = await fetchAuthSession();
+        const idToken = session.tokens?.idToken?.toString();
+
+        if (!idToken) {
+          if (!isMounted) return;
+
+          setUser(null);
+          return;
+        }
+
+        const syncedUser = await syncCognitoUser(idToken);
+
+        if (!isMounted) return;
+
+        tokenStorage.set(idToken);
+        setToken(idToken);
+        setUser(syncedUser);
       } catch {
-        tokenStorage.clear()
+        if (!isMounted) return;
 
-        if (isMounted) {
-          setToken(null)
-          setUser(null)
-        }
+        setUser(null);
+        setToken(null);
+        tokenStorage.clear();
       } finally {
         if (isMounted) {
-          setIsLoading(false)
+          setIsLoading(false);
         }
       }
     }
 
-    initializeAuth()
+    initializeAuth();
 
     return () => {
-      isMounted = false
+      isMounted = false;
+    };
+  }, []);
+
+  const logout = useCallback(async () => {
+    await signOut();
+
+    setUser(null);
+    setToken(null);
+    tokenStorage.clear();
+
+    queryClient.clear();
+  }, [queryClient]);
+
+  const setSession = useCallback(async (auth: AuthResponse) => {
+    tokenStorage.set(auth.access_token);
+    setToken(auth.access_token);
+
+    if (auth.user) {
+      setUser(auth.user);
+      return;
     }
-  }, [])
 
-  const logout = useCallback(() => {
-    tokenStorage.clear()
-    setToken(null)
-    setUser(null)
-    queryClient.clear()
-  }, [queryClient])
+    const currentUser = await getMe();
+    setUser(currentUser);
+  }, []);
 
-  const setSession = useCallback(
-    async (auth: AuthResponse) => {
-      tokenStorage.set(auth.access_token)
-      setToken(auth.access_token)
-
-      if (auth.user) {
-        setUser(auth.user)
-        queryClient.setQueryData(['auth', 'me'], auth.user)
-        return
-      }
-
-      const currentUser = await getMe()
-      setUser(currentUser)
-      queryClient.setQueryData(['auth', 'me'], currentUser)
-    },
-    [queryClient],
-  )
-
-  const value = useMemo<AuthContextValue>(
+  const value = useMemo(
     () => ({
       user,
       token,
-      isAuthenticated: Boolean(token && user),
+      isAuthenticated: Boolean(user && token),
       isLoading,
+      completeCognitoLogin,
       setSession,
       logout,
     }),
-    [isLoading, logout, setSession, token, user],
-  )
+    [user, token, isLoading, completeCognitoLogin, setSession, logout],
+  );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

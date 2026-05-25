@@ -7,7 +7,8 @@ export type AuthContextValue = {
   isAuthenticated: boolean
   isLoading: boolean
   setSession: (auth: AuthResponse) => Promise<void>
-  logout: () => void
+  completeCognitoLogin: () => Promise<User>
+  logout: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

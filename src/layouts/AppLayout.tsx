@@ -1,5 +1,5 @@
-import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
-import LogoutIcon from '@mui/icons-material/Logout'
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import LogoutIcon from "@mui/icons-material/Logout";
 import {
   AppBar,
   Avatar,
@@ -9,20 +9,26 @@ import {
   Stack,
   Toolbar,
   Typography,
-} from '@mui/material'
-import { Outlet } from 'react-router'
-import { useAuth } from '../auth/authContext'
+} from "@mui/material";
+import { Outlet, useNavigate } from "react-router";
+import { useAuth } from "../auth/authContext";
 
 export function AppLayout() {
-  const { logout, user } = useAuth()
+  const { logout, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <Box
       sx={{
-        minHeight: '100vh',
-        bgcolor: '#f4f6fb',
+        minHeight: "100vh",
+        bgcolor: "#f4f6fb",
         backgroundImage:
-          'radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.10), transparent 28%), radial-gradient(circle at 88% 0%, rgba(20, 184, 166, 0.10), transparent 26%)',
+          "radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.10), transparent 28%), radial-gradient(circle at 88% 0%, rgba(20, 184, 166, 0.10), transparent 26%)",
       }}
     >
       <AppBar
@@ -30,24 +36,28 @@ export function AppLayout() {
         elevation={0}
         position="sticky"
         sx={{
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(14px)',
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          bgcolor: "rgba(255,255,255,0.88)",
+          backdropFilter: "blur(14px)",
         }}
       >
         <Toolbar sx={{ minHeight: 68 }}>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ alignItems: "center", flexGrow: 1 }}
+          >
             <Box
               sx={{
                 width: 38,
                 height: 38,
                 borderRadius: 2,
-                display: 'grid',
-                placeItems: 'center',
-                bgcolor: 'primary.main',
-                color: 'common.white',
-                boxShadow: '0 10px 20px rgba(37, 99, 235, 0.24)',
+                display: "grid",
+                placeItems: "center",
+                bgcolor: "primary.main",
+                color: "common.white",
+                boxShadow: "0 10px 20px rgba(37, 99, 235, 0.24)",
               }}
             >
               <AssignmentTurnedInIcon fontSize="small" />
@@ -62,12 +72,16 @@ export function AppLayout() {
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <Avatar sx={{ width: 34, height: 34, bgcolor: '#172033', fontSize: 14 }}>
-              {user?.name?.charAt(0).toUpperCase() || 'U'}
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <Avatar
+              sx={{ width: 34, height: 34, bgcolor: "#172033", fontSize: 14 }}
+            >
+              {user?.name?.charAt(0).toUpperCase() || "U"}
             </Avatar>
-            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-              <Typography sx={{ fontWeight: 700, lineHeight: 1.1 }}>{user?.name || 'User'}</Typography>
+            <Box sx={{ display: { xs: "none", sm: "block" } }}>
+              <Typography sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+                {user?.name || "User"}
+              </Typography>
               <Typography color="text.secondary" variant="caption">
                 {user?.email}
               </Typography>
@@ -76,9 +90,9 @@ export function AppLayout() {
 
           <Button
             startIcon={<LogoutIcon />}
-            onClick={logout}
+            onClick={handleLogout}
             variant="outlined"
-            sx={{ ml: 2, textTransform: 'none', fontWeight: 700 }}
+            sx={{ ml: 2, textTransform: "none", fontWeight: 700 }}
           >
             Salir
           </Button>
@@ -88,5 +102,5 @@ export function AppLayout() {
         <Outlet />
       </Container>
     </Box>
-  )
+  );
 }
