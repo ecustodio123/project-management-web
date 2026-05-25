@@ -15,3 +15,17 @@ export async function getMe() {
   const { data } = await api.get<User>('/auth/me')
   return data
 }
+
+export async function syncCognitoUser(idToken: string) {
+  const { data } = await api.post<User>(
+    '/auth/cognito/sync-user',
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    },
+  )
+
+  return data
+}

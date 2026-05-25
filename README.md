@@ -1,73 +1,187 @@
-# React + TypeScript + Vite
+# Project Management Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend application for a fullstack **Project Management / Client Portal** system.
 
-Currently, two official plugins are available:
+This project was built to practice **Fullstack Development**, **Frontend Architecture**, **Authentication Flows**, and **API Integration** using a real-world backend.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Authentication
 
-## Expanding the ESLint configuration
+- User Login
+- Persistent Session
+- Protected Routes
+- Logout Flow
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Projects
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- View Projects
+- Create Projects
+- Project Details
+- Activity Timeline
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Tasks
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- View Tasks
+- Create Tasks
+- Task Details
+
+### Comments
+
+- Add Comments
+- View Comments
+
+### Files
+
+- Upload Files
+- Download Files from AWS S3
+
+### Activity
+
+- View Project Activity Timeline
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- Material UI (MUI)
+
+### State Management
+
+- React Query (TanStack Query)
+
+### Forms & Validation
+
+- React Hook Form
+- Zod
+
+### Routing
+
+- React Router
+
+### API Communication
+
+- Axios
+
+### Deployment
+
+- Cloudflare Pages
+
+---
+
+## Architecture
+
+```txt
+React Frontend
+      ↓
+NestJS Backend API
+      ↓
+PostgreSQL Database
+      ↓
+AWS S3 File Storage
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Live Demo
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Application URL:
+
+```txt
+https://project-management-web.pages.dev
 ```
+
+---
+
+## Backend API
+
+Swagger Documentation:
+
+```txt
+https://project-management-api-production-c67f.up.railway.app/api/docs
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file:
+
+```env
+VITE_API_URL=
+```
+
+Example:
+
+```env
+https://project-management-api-production-c67f.up.railway.app/
+```
+
+---
+
+## Running Locally
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start development server:
+
+```bash
+npm run dev
+```
+
+Application will run on:
+
+```txt
+http://localhost:5173
+```
+
+---
+
+## Authentication Flow
+
+```txt
+Login
+   ↓
+JWT Token
+   ↓
+Stored in Local Storage
+   ↓
+GET /auth/me
+   ↓
+Global Auth State
+   ↓
+Protected Routes
+```
+
+---
+
+## Future Improvements
+
+- Real-time updates
+- Task status management
+- Better dashboard analytics
+
+---
+
+## Learning Goals
+
+This project was built to strengthen knowledge in:
+
+- Fullstack Development
+- Frontend Architecture
+- API Integration
+- Authentication Flows
+- React Query
+- Cloud Deployments
+- Real-world Application Development

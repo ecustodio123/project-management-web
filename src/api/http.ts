@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { tokenStorage } from '../auth/tokenStorage'
+import { fetchAuthSession } from 'aws-amplify/auth'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
@@ -8,11 +8,21 @@ export const api = axios.create({
   },
 })
 
-api.interceptors.request.use((config) => {
-  const token = tokenStorage.get()
+api.interceptors.request.use(async (config) => {
+  if (config.headers.Authorization) {
+    return config
+  }
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  try {
+    const session = await fetchAuthSession()
+    const accessToken = session.tokens?.accessToken?.toString()
+
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`
+    }
+    console.log('ACCESS TOKEN SENT:', accessToken);
+  } catch {
+    // No active Cognito session.
   }
 
   return config
