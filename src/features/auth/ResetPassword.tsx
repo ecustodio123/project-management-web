@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import MarkEmailReadOutlinedIcon from "@mui/icons-material/MarkEmailReadOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
@@ -9,92 +10,137 @@ import {
   Button,
   IconButton,
   InputAdornment,
+  LinearProgress,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { confirmResetPassword } from "aws-amplify/auth";
+import { useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
-import { signIn } from "aws-amplify/auth";
 import { paths } from "../../routes/paths";
 import { getErrorMessage } from "../../utils/getErrorMessage";
-import { useAuth } from "../../auth/authContext";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+  confirmationCode: z.string().min(1, "Confirmation code is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-type LoginFormValues = z.infer<typeof schema>;
+type ResetPasswordValues = z.infer<typeof schema>;
 
-export function LoginForm() {
+export function ResetPassword() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { completeCognitoLogin } = useAuth();
-
   const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState<unknown>(null);
+  const [submitError, setSubmitError] = useState<unknown>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
 
-  const from =
-    (location.state as { from?: { pathname?: string } } | null)?.from
-      ?.pathname ?? paths.projects;
+  const emailFromState =
+    (location.state as { email?: string } | null)?.email ?? "";
 
-  const form = useForm<LoginFormValues>({
+  const form = useForm<ResetPasswordValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      email: "",
+      email: emailFromState,
+      confirmationCode: "",
       password: "",
     },
   });
 
-  const handleLogin = form.handleSubmit(async (values) => {
+  const passwordValue =
+    useWatch({ control: form.control, name: "password" }) ?? "";
+  const passwordStrength = useMemo(() => {
+    let score = 0;
+
+    if (passwordValue.length >= 8) score += 35;
+    if (/[A-Z]/.test(passwordValue)) score += 20;
+    if (/[0-9]/.test(passwordValue)) score += 20;
+    if (/[^A-Za-z0-9]/.test(passwordValue)) score += 25;
+
+    return Math.min(score, 100);
+  }, [passwordValue]);
+
+  const handleSubmit = form.handleSubmit(async (values) => {
     try {
-      setLoginError(null);
+      setSubmitError(null);
       setIsSubmitting(true);
 
-      await signIn({
+      await confirmResetPassword({
         username: values.email,
-        password: values.password,
+        confirmationCode: values.confirmationCode,
+        newPassword: values.password,
       });
 
-      await completeCognitoLogin();
-
-      navigate(from, { replace: true });
+      setIsComplete(true);
     } catch (error) {
-      setLoginError(error);
-      console.error("COGNITO LOGIN ERROR", error);
+      setSubmitError(error);
     } finally {
       setIsSubmitting(false);
     }
   });
 
+  if (isComplete) {
+    return (
+      <Stack spacing={3} sx={{ width: "100%", maxWidth: 420, mx: "auto" }}>
+        <Stack spacing={1}>
+          <Typography color="primary" sx={{ fontWeight: 800 }} variant="body2">
+            Contraseña actualizada
+          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
+            Ya puedes iniciar sesión
+          </Typography>
+          <Typography color="text.secondary">
+            Tu nueva contraseña quedó registrada correctamente.
+          </Typography>
+        </Stack>
+
+        <Alert severity="success" sx={{ borderRadius: 2 }}>
+          Usa tu nueva contraseña para entrar a tu workspace.
+        </Alert>
+
+        <Button
+          variant="contained"
+          size="large"
+          onClick={() => navigate(paths.login, { replace: true })}
+          sx={{
+            py: 1.35,
+            fontWeight: 800,
+            textTransform: "none",
+            boxShadow: "0 12px 24px rgba(37, 99, 235, 0.24)",
+          }}
+        >
+          Ir al login
+        </Button>
+      </Stack>
+    );
+  }
+
   return (
     <Stack
       component="form"
       spacing={3}
-      onSubmit={handleLogin}
+      onSubmit={handleSubmit}
       sx={{ width: "100%", maxWidth: 420, mx: "auto" }}
     >
       <Stack spacing={1}>
         <Typography color="primary" sx={{ fontWeight: 800 }} variant="body2">
-          Bienvenido de vuelta
+          Código de verificación
         </Typography>
-
         <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
-          Inicia sesión
+          Restablece tu contraseña
         </Typography>
-
         <Typography color="text.secondary">
-          Accede a tus proyectos, tareas y conversaciones con clientes.
+          Ingresa el código enviado por Cognito y define una nueva contraseña.
         </Typography>
       </Stack>
 
-      {loginError ? (
+      {submitError ? (
         <Alert severity="error" sx={{ borderRadius: 2 }}>
-          {getErrorMessage(loginError)}
+          {getErrorMessage(submitError)}
         </Alert>
       ) : null}
 
@@ -119,9 +165,27 @@ export function LoginForm() {
         />
 
         <TextField
-          label="Contraseña"
+          label="Código"
+          autoComplete="one-time-code"
+          fullWidth
+          error={Boolean(form.formState.errors.confirmationCode)}
+          helperText={form.formState.errors.confirmationCode?.message}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <MarkEmailReadOutlinedIcon color="action" fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+          {...form.register("confirmationCode")}
+        />
+
+        <TextField
+          label="Nueva contraseña"
           type={showPassword ? "text" : "password"}
-          autoComplete="current-password"
+          autoComplete="new-password"
           fullWidth
           error={Boolean(form.formState.errors.password)}
           helperText={form.formState.errors.password?.message}
@@ -155,17 +219,29 @@ export function LoginForm() {
           {...form.register("password")}
         />
 
-        <Box sx={{ textAlign: "right" }}>
-          <Typography
-            component={Link}
-            to={paths.forgotPassword}
-            color="primary"
-            variant="body2"
-            sx={{ fontWeight: 800, textDecoration: "none" }}
-          >
-            ¿Olvidaste tu contraseña?
+        <Stack spacing={0.75}>
+          <LinearProgress
+            value={passwordStrength}
+            variant="determinate"
+            sx={{
+              height: 6,
+              borderRadius: 999,
+              bgcolor: "#e5e7eb",
+              "& .MuiLinearProgress-bar": {
+                bgcolor:
+                  passwordStrength > 75
+                    ? "success.main"
+                    : passwordStrength > 45
+                      ? "warning.main"
+                      : "error.main",
+              },
+            }}
+          />
+          <Typography color="text.secondary" variant="caption">
+            Usa al menos 8 caracteres. Mayúsculas, números o símbolos ayudan a
+            fortalecerla.
           </Typography>
-        </Box>
+        </Stack>
       </Stack>
 
       <Stack spacing={2}>
@@ -181,7 +257,7 @@ export function LoginForm() {
             boxShadow: "0 12px 24px rgba(37, 99, 235, 0.24)",
           }}
         >
-          {isSubmitting ? "Ingresando..." : "Ingresar"}
+          {isSubmitting ? "Actualizando..." : "Actualizar contraseña"}
         </Button>
 
         <Box
@@ -196,14 +272,14 @@ export function LoginForm() {
           }}
         >
           <Typography color="text.secondary" variant="body2">
-            ¿No tienes cuenta?{" "}
+            ¿Necesitas otro código?{" "}
             <Typography
               component={Link}
-              to={paths.register}
+              to={paths.forgotPassword}
               color="primary"
               sx={{ fontWeight: 800 }}
             >
-              Crear cuenta
+              Solicitar código
             </Typography>
           </Typography>
         </Box>

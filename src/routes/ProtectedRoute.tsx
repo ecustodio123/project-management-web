@@ -5,7 +5,7 @@ import { paths } from './paths'
 
 export function ProtectedRoute() {
   const location = useLocation()
-  const { isAuthenticated, isLoading, token } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return (
@@ -15,7 +15,7 @@ export function ProtectedRoute() {
     )
   }
 
-  if (!token || !isAuthenticated) {
+  if (!isAuthenticated) {
     return <Navigate to={paths.login} replace state={{ from: location }} />
   }
 

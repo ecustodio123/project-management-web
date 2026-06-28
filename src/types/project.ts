@@ -7,6 +7,7 @@ export type Project = {
   name: string
   description: string | null
   ownerId: string
+  role?: ProjectRole
   owner?: User
   members?: ProjectMember[]
   tasks?: unknown[]
