@@ -1,187 +1,317 @@
-# Project Management Web
+<div align="center">
 
-Frontend application for a fullstack **Project Management / Client Portal** system.
+# 🚀 FlowPilot
 
-This project was built to practice **Fullstack Development**, **Frontend Architecture**, **Authentication Flows**, and **API Integration** using a real-world backend.
+### Modern Collaborative Project Management Platform
 
----
+Plan. Collaborate. Deliver.
 
-## Features
+A modern full-stack project management platform designed to help teams organize projects, manage tasks, collaborate efficiently, and streamline workflows through secure authentication and scalable architecture.
 
-### Authentication
+<p align="center">
 
-- User Login
-- Persistent Session
-- Protected Routes
-- Logout Flow
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Material UI](https://img.shields.io/badge/MUI-7-007FFF?logo=mui&logoColor=white)](https://mui.com/)
+[![React Query](https://img.shields.io/badge/TanStack_Query-FF4154?logo=reactquery&logoColor=white)](https://tanstack.com/query)
+[![AWS Cognito](https://img.shields.io/badge/AWS-Cognito-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/cognito/)
+[![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)](https://pages.cloudflare.com/)
 
-### Projects
+</p>
 
-- View Projects
-- Create Projects
-- Project Details
-- Activity Timeline
-
-### Tasks
-
-- View Tasks
-- Create Tasks
-- Task Details
-
-### Comments
-
-- Add Comments
-- View Comments
-
-### Files
-
-- Upload Files
-- Download Files from AWS S3
-
-### Activity
-
-- View Project Activity Timeline
+</div>
 
 ---
 
-## Tech Stack
+# 🌐 Live Demo
 
-### Frontend
+**Application**
 
-- React
-- TypeScript
-- Vite
-- Material UI (MUI)
+https://project-management-web.pages.dev/
 
-### State Management
+**Backend API**
 
-- React Query (TanStack Query)
-
-### Forms & Validation
-
-- React Hook Form
-- Zod
-
-### Routing
-
-- React Router
-
-### API Communication
-
-- Axios
-
-### Deployment
-
-- Cloudflare Pages
-
----
-
-## Architecture
-
-```txt
-React Frontend
-      ↓
-NestJS Backend API
-      ↓
-PostgreSQL Database
-      ↓
-AWS S3 File Storage
-```
-
----
-
-## Live Demo
-
-Application URL:
-
-```txt
-https://project-management-web.pages.dev
-```
-
----
-
-## Backend API
-
-Swagger Documentation:
-
-```txt
 https://project-management-api-production-c67f.up.railway.app/api/docs
+
+---
+
+# ✨ Features
+
+## 🔐 Authentication
+
+- AWS Cognito Authentication
+- Secure Login
+- User Registration
+- Email Verification
+- Forgot Password
+- Password Reset
+- Persistent Sessions
+- Protected Routes
+
+---
+
+## 📁 Project Management
+
+- Create Projects
+- Update Projects
+- Delete Projects
+- Invite Team Members
+- Project Dashboard
+- Project Details
+
+---
+
+## ✅ Task Management
+
+- Create Tasks
+- Update Tasks
+- Delete Tasks
+- Assign Members
+- Status Management
+- Due Dates
+
+---
+
+## 👥 Team Collaboration
+
+- Project Members
+- Comments
+- File Uploads
+- Role-Based Access Control (RBAC)
+
+---
+
+## 🛡️ Security
+
+- AWS Cognito
+- JWT Authentication
+- Route Protection
+- Protected APIs
+- Role-Based Authorization
+- Secure File Uploads
+
+---
+
+# ⚙️ Tech Stack
+
+| Layer | Technologies |
+|---------|-------------|
+| Frontend | React 19, TypeScript |
+| UI | Material UI (MUI) |
+| State Management | TanStack Query |
+| Forms | React Hook Form + Zod |
+| HTTP | Axios |
+| Authentication | AWS Cognito + AWS Amplify |
+| Routing | React Router |
+| Deployment | Cloudflare Pages |
+
+---
+
+# 🏗️ Architecture
+
+```text
+                React + TypeScript
+                        │
+                        ▼
+             React Query + Axios
+                        │
+                        ▼
+             AWS Cognito Authentication
+                        │
+                        ▼
+                 NestJS REST API
+                        │
+                        ▼
+                 PostgreSQL Database
 ```
 
 ---
 
-## Environment Variables
+# 🔒 Authentication Flow
 
-Create a `.env` file:
+```text
+User
 
-```env
-VITE_API_URL=
-```
+ │
 
-Example:
+ ▼
 
-```env
-https://project-management-api-production-c67f.up.railway.app/
+Login UI
+
+ │
+
+ ▼
+
+AWS Cognito
+
+ │
+
+ ▼
+
+ID Token + Access Token
+
+ │
+
+ ▼
+
+NestJS Authentication Guard
+
+ │
+
+ ▼
+
+User Synchronization
+
+ │
+
+ ▼
+
+Protected REST APIs
 ```
 
 ---
 
-## Running Locally
+# 👤 Role-Based Access Control (RBAC)
 
-Install dependencies:
+| Role | Permissions |
+|-------|-------------|
+| OWNER | Full project administration |
+| ADMIN | Manage project content and members |
+| MEMBER | Create and manage tasks, comments and files |
+| VIEWER | Read-only access |
+
+---
+
+# 📂 Project Structure
+
+```text
+src
+│
+├── auth
+├── components
+├── features
+│   ├── auth
+│   ├── comments
+│   ├── files
+│   ├── members
+│   ├── projects
+│   └── tasks
+│
+├── hooks
+├── layouts
+├── routes
+├── types
+└── utils
+```
+
+---
+
+# 🚀 Getting Started
+
+## Clone the repository
+
+```bash
+git clone https://github.com/ecustodio123/project-management-web.git
+```
+
+## Install dependencies
 
 ```bash
 npm install
 ```
 
-Start development server:
+## Configure environment variables
+
+Create a `.env` file.
+
+```env
+VITE_API_URL=http://localhost:3000
+
+VITE_AWS_REGION=
+
+VITE_COGNITO_USER_POOL_ID=
+
+VITE_COGNITO_CLIENT_ID=
+```
+
+## Run the application
 
 ```bash
 npm run dev
 ```
 
-Application will run on:
+---
 
-```txt
-http://localhost:5173
-```
+# 📸 Screenshots
+
+- Login
+![alt text](image.png)
+
+- Projects
+![alt text](image-1.png)
+
+- Tasks
+![alt text](image-2.png)
+
+- Members
+![alt text](image-3.png)
+
+- Comments & Files
+![alt text](image-4.png)
 
 ---
 
-## Authentication Flow
+# 🧠 What I Learned
 
-```txt
-Login
-   ↓
-JWT Token
-   ↓
-Stored in Local Storage
-   ↓
-GET /auth/me
-   ↓
-Global Auth State
-   ↓
-Protected Routes
-```
+During the development of **FlowPilot**, I strengthened my knowledge in:
 
----
-
-## Future Improvements
-
-- Real-time updates
-- Task status management
-- Better dashboard analytics
-
----
-
-## Learning Goals
-
-This project was built to strengthen knowledge in:
-
-- Fullstack Development
-- Frontend Architecture
-- API Integration
-- Authentication Flows
+- Modern React Architecture
 - React Query
-- Cloud Deployments
-- Real-world Application Development
+- AWS Cognito Authentication
+- Authentication Flows
+- Route Protection
+- REST API Integration
+- RBAC (Role-Based Access Control)
+- Component Architecture
+- Scalable Frontend Design
+- Cloud Deployment with Cloudflare Pages
+
+---
+
+# 🚀 Future Vision
+
+Planned improvements include:
+
+- Kanban Board
+- Calendar View
+- Notifications
+- Real-Time Collaboration
+- Activity Timeline
+- AI Assistant
+- Mobile Application (React Native)
+
+---
+
+# 🔗 Related Projects
+
+Backend API
+
+https://github.com/ecustodio123/project-management-api
+
+Swagger
+
+https://project-management-api-production-c67f.up.railway.app/api/docs
+
+---
+
+# 👨‍💻 Author
+
+**Enrique Custodio**
+
+React Native & Frontend Engineer
+
+Currently expanding into Full Stack & Cloud Engineering.
+
+---
+
+## ⭐ If you found this project interesting, consider giving it a star!

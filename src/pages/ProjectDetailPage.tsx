@@ -1,11 +1,12 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import GroupsIcon from '@mui/icons-material/Groups'
 import HistoryIcon from '@mui/icons-material/History'
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
 import { Alert, Box, Button, Chip, Divider, Grid, Paper, Stack, Tab, Tabs, Typography } from '@mui/material'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { EmptyState } from '../components/EmptyState'
@@ -18,14 +19,18 @@ import { taskKeys } from '../features/tasks/taskKeys'
 import { getProjectTasks } from '../features/tasks/tasksApi'
 import { ProjectMembersPanel } from '../features/projects/ProjectMembersPanel'
 import { projectKeys } from '../features/projects/projectKeys'
-import { getProject, getProjectActivity, getProjectMembers } from '../features/projects/projectsApi'
+import { deleteProject, getProject, getProjectActivity, getProjectMembers } from '../features/projects/projectsApi'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useNotification } from '../providers/notificationContext'
 import { paths } from '../routes/paths'
 import { getErrorMessage } from '../utils/getErrorMessage'
+import { canDeleteProject, canManageProject, canWriteProjectContent } from '../utils/permissions'
 
 export function ProjectDetailPage() {
   const { projectId = '', taskId } = useParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { notify } = useNotification()
   const [tab, setTab] = useState(0)
 
   const projectQuery = useQuery({
@@ -56,6 +61,31 @@ export function ProjectDetailPage() {
   const tasks = tasksQuery.data ?? []
   const members = membersQuery.data ?? []
   const activity = activityQuery.data ?? []
+  const projectRole = projectQuery.data?.role
+  const canCreateTasks = canWriteProjectContent(projectRole)
+  const canManageContent = canManageProject(projectRole)
+  const canRemoveProject = canDeleteProject(projectRole)
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: () => deleteProject(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) })
+      notify('Proyecto eliminado.')
+      navigate(paths.projects, { replace: true })
+    },
+    onError: (error) => {
+      notify(getErrorMessage(error), 'error')
+    },
+  })
+
+  function handleDeleteProject() {
+    const shouldDelete = window.confirm('¿Eliminar este proyecto? Esta acción no se puede deshacer.')
+
+    if (shouldDelete) {
+      deleteProjectMutation.mutate()
+    }
+  }
 
   if (projectQuery.isLoading) {
     return <LoadingState />
@@ -141,14 +171,39 @@ export function ProjectDetailPage() {
               </Stack>
             </Box>
 
-            <Grid container spacing={1.5} sx={{ width: { xs: '100%', md: 440 } }}>
-              <MetricCard icon={<AssignmentTurnedInIcon />} label="Tareas" value={tasks.length} />
-              <MetricCard icon={<GroupsIcon />} label="Miembros" value={members.length} />
-              <MetricCard icon={<HistoryIcon />} label="Actividad" value={activity.length} />
-            </Grid>
+            <Stack spacing={2} sx={{ width: { xs: '100%', md: 440 } }}>
+              {canRemoveProject ? (
+                <Button
+                  color="error"
+                  startIcon={<DeleteOutlineOutlinedIcon />}
+                  variant="contained"
+                  disabled={deleteProjectMutation.isPending}
+                  onClick={handleDeleteProject}
+                  sx={{
+                    alignSelf: { xs: 'stretch', md: 'flex-end' },
+                    bgcolor: '#dc2626',
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    '&:hover': { bgcolor: '#b91c1c' },
+                  }}
+                >
+                  {deleteProjectMutation.isPending ? 'Eliminando...' : 'Eliminar proyecto'}
+                </Button>
+              ) : null}
+
+              <Grid container spacing={1.5}>
+                <MetricCard icon={<AssignmentTurnedInIcon />} label="Tareas" value={tasks.length} />
+                <MetricCard icon={<GroupsIcon />} label="Miembros" value={members.length} />
+                <MetricCard icon={<HistoryIcon />} label="Actividad" value={activity.length} />
+              </Grid>
+            </Stack>
           </Stack>
         </Stack>
       </Paper>
+
+      {deleteProjectMutation.isError ? (
+        <Alert severity="error">{getErrorMessage(deleteProjectMutation.error)}</Alert>
+      ) : null}
 
       <Paper
         variant="outlined"
@@ -180,9 +235,11 @@ export function ProjectDetailPage() {
                 title="Tareas del proyecto"
                 description="Crea y revisa el trabajo pendiente, prioridades y responsables."
               />
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
-                <TaskCreateForm projectId={projectId} />
-              </Paper>
+              {canCreateTasks ? (
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
+                  <TaskCreateForm projectId={projectId} />
+                </Paper>
+              ) : null}
               {tasksQuery.isLoading ? <LoadingState /> : null}
               {tasksQuery.isError ? <Alert severity="error">{getErrorMessage(tasksQuery.error)}</Alert> : null}
               {tasksQuery.data ? <TaskList tasks={tasksQuery.data} /> : null}
@@ -195,6 +252,7 @@ export function ProjectDetailPage() {
               members={members}
               isLoading={membersQuery.isLoading}
               error={membersQuery.error}
+              currentUserRole={projectRole}
             />
           ) : null}
 
@@ -243,6 +301,8 @@ export function ProjectDetailPage() {
           open={Boolean(taskId)}
           taskId={taskId}
           projectId={projectId}
+          canWrite={canCreateTasks}
+          canManage={canManageContent}
           onClose={() => navigate(paths.projectDetail(projectId))}
         />
       ) : null}

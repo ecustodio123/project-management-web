@@ -24,6 +24,7 @@ import { LoadingState } from '../../components/LoadingState'
 import { useNotification } from '../../providers/notificationContext'
 import type { ProjectMember, ProjectRole } from '../../types/project'
 import { getErrorMessage } from '../../utils/getErrorMessage'
+import { canManageProject, canUpdateMemberRoles } from '../../utils/permissions'
 import { userKeys } from '../users/userKeys'
 import { getUsers } from '../users/usersApi'
 import { projectKeys } from './projectKeys'
@@ -41,6 +42,7 @@ type ProjectMembersPanelProps = {
   members: ProjectMember[]
   isLoading: boolean
   error: unknown
+  currentUserRole?: ProjectRole
 }
 
 const roleOptions: Array<{ value: Exclude<ProjectRole, 'OWNER'>; label: string; description: string }> = [
@@ -49,12 +51,15 @@ const roleOptions: Array<{ value: Exclude<ProjectRole, 'OWNER'>; label: string; 
   { value: 'VIEWER', label: 'Viewer', description: 'Solo necesita visibilidad.' },
 ]
 
-export function ProjectMembersPanel({ projectId, members, isLoading, error }: ProjectMembersPanelProps) {
+export function ProjectMembersPanel({ projectId, members, isLoading, error, currentUserRole }: ProjectMembersPanelProps) {
   const queryClient = useQueryClient()
   const { notify } = useNotification()
+  const canManageMembers = canManageProject(currentUserRole)
+  const canEditRoles = canUpdateMemberRoles(currentUserRole)
   const usersQuery = useQuery({
     queryKey: userKeys.all,
     queryFn: getUsers,
+    enabled: canManageMembers,
   })
 
   const form = useForm<MemberFormValues>({
@@ -138,65 +143,67 @@ export function ProjectMembersPanel({ projectId, members, isLoading, error }: Pr
         <Typography color="text.secondary">Personas con acceso y rol dentro de este proyecto.</Typography>
       </Box>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
-        <Stack
-          component="form"
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={1.5}
-          onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
-        >
-          <TextField
-            select
-            label="Usuario"
-            size="small"
-            fullWidth
-            disabled={usersQuery.isLoading || availableUsers.length === 0}
-            error={Boolean(form.formState.errors.userId)}
-            helperText={
-              form.formState.errors.userId?.message ||
-              (availableUsers.length === 0 ? 'No hay usuarios disponibles para agregar.' : undefined)
-            }
-            {...form.register('userId')}
+      {canManageMembers ? (
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
+          <Stack
+            component="form"
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1.5}
+            onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
           >
-            {availableUsers.map((user) => (
-              <MenuItem key={user.id} value={user.id}>
-                <Stack spacing={0.25}>
-                  <Typography sx={{ fontWeight: 700 }}>{user.name}</Typography>
-                  <Typography color="text.secondary" variant="caption">
-                    {user.email}
-                  </Typography>
-                </Stack>
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField select label="Rol" size="small" sx={{ minWidth: { xs: '100%', md: 180 } }} {...form.register('role')}>
-            {roleOptions.map((role) => (
-              <MenuItem key={role.value} value={role.value}>
-                {role.label}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<AddIcon />}
-            disabled={mutation.isPending || usersQuery.isLoading || availableUsers.length === 0}
-            sx={{ minWidth: 150, textTransform: 'none', fontWeight: 800 }}
-          >
-            {mutation.isPending ? 'Agregando...' : 'Agregar'}
-          </Button>
-        </Stack>
-        {usersQuery.isError ? (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {getErrorMessage(usersQuery.error)}
-          </Alert>
-        ) : null}
-        {mutation.isError ? (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {getErrorMessage(mutation.error)}
-          </Alert>
-        ) : null}
-      </Paper>
+            <TextField
+              select
+              label="Usuario"
+              size="small"
+              fullWidth
+              disabled={usersQuery.isLoading || availableUsers.length === 0}
+              error={Boolean(form.formState.errors.userId)}
+              helperText={
+                form.formState.errors.userId?.message ||
+                (availableUsers.length === 0 ? 'No hay usuarios disponibles para agregar.' : undefined)
+              }
+              {...form.register('userId')}
+            >
+              {availableUsers.map((user) => (
+                <MenuItem key={user.id} value={user.id}>
+                  <Stack spacing={0.25}>
+                    <Typography sx={{ fontWeight: 700 }}>{user.name}</Typography>
+                    <Typography color="text.secondary" variant="caption">
+                      {user.email}
+                    </Typography>
+                  </Stack>
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField select label="Rol" size="small" sx={{ minWidth: { xs: '100%', md: 180 } }} {...form.register('role')}>
+              {roleOptions.map((role) => (
+                <MenuItem key={role.value} value={role.value}>
+                  {role.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<AddIcon />}
+              disabled={mutation.isPending || usersQuery.isLoading || availableUsers.length === 0}
+              sx={{ minWidth: 150, textTransform: 'none', fontWeight: 800 }}
+            >
+              {mutation.isPending ? 'Agregando...' : 'Agregar'}
+            </Button>
+          </Stack>
+          {usersQuery.isError ? (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {getErrorMessage(usersQuery.error)}
+            </Alert>
+          ) : null}
+          {mutation.isError ? (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {getErrorMessage(mutation.error)}
+            </Alert>
+          ) : null}
+        </Paper>
+      ) : null}
 
       {isLoading ? <LoadingState /> : null}
       {error ? <Alert severity="error">{getErrorMessage(error)}</Alert> : null}
@@ -223,7 +230,7 @@ export function ProjectMembersPanel({ projectId, members, isLoading, error }: Pr
                   label="Rol"
                   size="small"
                   value={member.role}
-                  disabled={member.role === 'OWNER' || updateRoleMutation.isPending}
+                  disabled={!canEditRoles || member.role === 'OWNER' || updateRoleMutation.isPending}
                   sx={{ minWidth: 130 }}
                   onChange={(event) =>
                     updateRoleMutation.mutate({
@@ -251,7 +258,7 @@ export function ProjectMembersPanel({ projectId, members, isLoading, error }: Pr
                     <IconButton
                       aria-label="Remover miembro"
                       color="error"
-                      disabled={member.role === 'OWNER' || removeMemberMutation.isPending}
+                      disabled={!canManageMembers || member.role === 'OWNER' || removeMemberMutation.isPending}
                       onClick={() => handleRemoveMember(member)}
                     >
                       <DeleteOutlineOutlinedIcon />

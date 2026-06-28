@@ -29,6 +29,7 @@ import type { ChangeEvent, ReactNode } from 'react'
 import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { useAuth } from '../../auth/authContext'
 import { LoadingState } from '../../components/LoadingState'
 import { useNotification } from '../../providers/notificationContext'
 import { commentKeys } from '../comments/commentKeys'
@@ -53,6 +54,8 @@ type TaskDetailModalProps = {
   open: boolean
   taskId: string
   projectId: string
+  canWrite: boolean
+  canManage: boolean
   onClose: () => void
 }
 
@@ -71,9 +74,10 @@ const taskDetailsSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>
 type TaskDetailsFormValues = z.infer<typeof taskDetailsSchema>
 
-export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetailModalProps) {
+export function TaskDetailModal({ open, taskId, projectId, canWrite, canManage, onClose }: TaskDetailModalProps) {
   const queryClient = useQueryClient()
   const { notify } = useNotification()
+  const { user } = useAuth()
 
   const taskQuery = useQuery({
     queryKey: taskKeys.detail(taskId),
@@ -248,6 +252,10 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
   const task = taskQuery.data
   const comments = commentsQuery.data ?? []
   const files = filesQuery.data ?? []
+  const isTaskAssignee = Boolean(user?.id && task?.assigneeId === user.id)
+  const isTaskCreator = Boolean(user?.id && task?.createdById === user.id)
+  const canWriteTask = canWrite || isTaskAssignee || isTaskCreator
+  const canManageTask = canManage || isTaskAssignee || isTaskCreator
 
   useEffect(() => {
     if (!task) return
@@ -265,6 +273,11 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
   }, [task, taskDetailsForm, taskForm])
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    if (!canWriteTask) {
+      event.target.value = ''
+      return
+    }
+
     const file = event.target.files?.[0]
 
     if (file) {
@@ -275,6 +288,8 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
   }
 
   function handleDeleteTask() {
+    if (!canManageTask) return
+
     const shouldDelete = window.confirm('¿Eliminar esta tarea? Esta acción no se puede deshacer.')
 
     if (shouldDelete) {
@@ -283,6 +298,8 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
   }
 
   function submitDetails(values?: Partial<TaskDetailsFormValues>) {
+    if (!canWriteTask) return
+
     const currentValues = taskDetailsForm.getValues()
     updateTaskDetailsMutation.mutate({ ...currentValues, ...values })
   }
@@ -331,16 +348,18 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                 <ContentCopyIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Eliminar tarea">
-              <IconButton
-                onClick={handleDeleteTask}
-                aria-label="Eliminar tarea"
-                color="error"
-                disabled={deleteTaskMutation.isPending}
-              >
-                <DeleteOutlineOutlinedIcon />
-              </IconButton>
-            </Tooltip>
+            {canManageTask ? (
+              <Tooltip title="Eliminar tarea">
+                <IconButton
+                  onClick={handleDeleteTask}
+                  aria-label="Eliminar tarea"
+                  color="error"
+                  disabled={deleteTaskMutation.isPending}
+                >
+                  <DeleteOutlineOutlinedIcon />
+                </IconButton>
+              </Tooltip>
+            ) : null}
             <IconButton onClick={onClose} aria-label="Cerrar tarea">
               <CloseIcon />
             </IconButton>
@@ -360,10 +379,10 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 280px' }, minHeight: 620 }}>
             <Stack spacing={3} sx={{ p: 3 }}>
               <Paper
-                component="form"
+                component={canWriteTask ? 'form' : 'section'}
                 variant="outlined"
                 sx={{ p: 2.5, borderRadius: 3, bgcolor: '#f8fafc' }}
-                onSubmit={taskForm.handleSubmit((values) => updateTaskMutation.mutate(values))}
+                onSubmit={canWriteTask ? taskForm.handleSubmit((values) => updateTaskMutation.mutate(values)) : undefined}
               >
                 <Stack spacing={2}>
                   <Box>
@@ -375,6 +394,7 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                   <TextField
                     label="Título"
                     fullWidth
+                    disabled={!canWriteTask}
                     error={Boolean(taskForm.formState.errors.title)}
                     helperText={taskForm.formState.errors.title?.message}
                     {...taskForm.register('title')}
@@ -384,6 +404,7 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                     multiline
                     minRows={4}
                     fullWidth
+                    disabled={!canWriteTask}
                     error={Boolean(taskForm.formState.errors.description)}
                     helperText={taskForm.formState.errors.description?.message}
                     {...taskForm.register('description')}
@@ -394,26 +415,30 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                   {updateTaskMutation.isSuccess ? <Alert severity="success">Tarea actualizada.</Alert> : null}
                   {deleteTaskMutation.isError ? <Alert severity="error">{getErrorMessage(deleteTaskMutation.error)}</Alert> : null}
                   <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                    <Button
-                      type="button"
-                      color="error"
-                      variant="outlined"
-                      startIcon={<DeleteOutlineOutlinedIcon />}
-                      onClick={handleDeleteTask}
-                      disabled={deleteTaskMutation.isPending}
-                      sx={{ textTransform: 'none', fontWeight: 800 }}
-                    >
-                      {deleteTaskMutation.isPending ? 'Eliminando...' : 'Eliminar tarea'}
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      startIcon={<SaveIcon />}
-                      disabled={updateTaskMutation.isPending}
-                      sx={{ textTransform: 'none', fontWeight: 800 }}
-                    >
-                      {updateTaskMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
-                    </Button>
+                    {canManageTask ? (
+                      <Button
+                        type="button"
+                        color="error"
+                        variant="outlined"
+                        startIcon={<DeleteOutlineOutlinedIcon />}
+                        onClick={handleDeleteTask}
+                        disabled={deleteTaskMutation.isPending}
+                        sx={{ textTransform: 'none', fontWeight: 800 }}
+                      >
+                        {deleteTaskMutation.isPending ? 'Eliminando...' : 'Eliminar tarea'}
+                      </Button>
+                    ) : null}
+                    {canWriteTask ? (
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        startIcon={<SaveIcon />}
+                        disabled={updateTaskMutation.isPending}
+                        sx={{ textTransform: 'none', fontWeight: 800 }}
+                      >
+                        {updateTaskMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+                      </Button>
+                    ) : null}
                   </Stack>
                 </Stack>
               </Paper>
@@ -432,16 +457,18 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                       Archivos relacionados al trabajo de este ticket.
                     </Typography>
                   </Box>
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<UploadFileIcon />}
-                    disabled={uploadFileMutation.isPending}
-                    sx={{ textTransform: 'none', fontWeight: 800 }}
-                  >
-                    {uploadFileMutation.isPending ? 'Subiendo...' : 'Subir archivo'}
-                    <input type="file" hidden onChange={handleFileChange} />
-                  </Button>
+                  {canWriteTask ? (
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<UploadFileIcon />}
+                      disabled={uploadFileMutation.isPending}
+                      sx={{ textTransform: 'none', fontWeight: 800 }}
+                    >
+                      {uploadFileMutation.isPending ? 'Subiendo...' : 'Subir archivo'}
+                      <input type="file" hidden onChange={handleFileChange} />
+                    </Button>
+                  ) : null}
                 </Stack>
 
                 {uploadFileMutation.isError ? <Alert severity="error">{getErrorMessage(uploadFileMutation.error)}</Alert> : null}
@@ -452,7 +479,9 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                 {!filesQuery.isLoading && files.length === 0 ? (
                   <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, textAlign: 'center' }}>
                     <Typography sx={{ fontWeight: 800 }}>Sin adjuntos</Typography>
-                    <Typography color="text.secondary">Sube archivos para documentar este ticket.</Typography>
+                    <Typography color="text.secondary">
+                      {canWriteTask ? 'Sube archivos para documentar este ticket.' : 'No hay archivos adjuntos para revisar.'}
+                    </Typography>
                   </Paper>
                 ) : null}
 
@@ -490,16 +519,18 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                             <DownloadIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Eliminar archivo">
-                          <IconButton
-                            aria-label="Eliminar archivo"
-                            color="error"
-                            onClick={() => deleteFileMutation.mutate(file.id)}
-                            disabled={deleteFileMutation.isPending}
-                          >
-                            <DeleteOutlineOutlinedIcon />
-                          </IconButton>
-                        </Tooltip>
+                        {canManageTask || file.uploadedById === user?.id ? (
+                          <Tooltip title="Eliminar archivo">
+                            <IconButton
+                              aria-label="Eliminar archivo"
+                              color="error"
+                              onClick={() => deleteFileMutation.mutate(file.id)}
+                              disabled={deleteFileMutation.isPending}
+                            >
+                              <DeleteOutlineOutlinedIcon />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                       </Stack>
                     </Paper>
                   ))}
@@ -516,43 +547,47 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                   </Typography>
                 </Box>
 
-                <Paper
-                  component="form"
-                  variant="outlined"
-                  sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}
-                  onSubmit={form.handleSubmit((values) => createCommentMutation.mutate(values))}
-                >
-                  <Stack spacing={1.5}>
-                    <TextField
-                      label="Agregar comentario"
-                      multiline
-                      minRows={3}
-                      fullWidth
-                      error={Boolean(form.formState.errors.content)}
-                      helperText={form.formState.errors.content?.message}
-                      {...form.register('content')}
-                    />
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      endIcon={<SendIcon />}
-                      disabled={createCommentMutation.isPending}
-                      sx={{ alignSelf: 'flex-end', textTransform: 'none', fontWeight: 800 }}
-                    >
-                      {createCommentMutation.isPending ? 'Publicando...' : 'Comentar'}
-                    </Button>
-                    {createCommentMutation.isError ? (
-                      <Alert severity="error">{getErrorMessage(createCommentMutation.error)}</Alert>
-                    ) : null}
-                  </Stack>
-                </Paper>
+                {canWriteTask ? (
+                  <Paper
+                    component="form"
+                    variant="outlined"
+                    sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}
+                    onSubmit={form.handleSubmit((values) => createCommentMutation.mutate(values))}
+                  >
+                    <Stack spacing={1.5}>
+                      <TextField
+                        label="Agregar comentario"
+                        multiline
+                        minRows={3}
+                        fullWidth
+                        error={Boolean(form.formState.errors.content)}
+                        helperText={form.formState.errors.content?.message}
+                        {...form.register('content')}
+                      />
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        endIcon={<SendIcon />}
+                        disabled={createCommentMutation.isPending}
+                        sx={{ alignSelf: 'flex-end', textTransform: 'none', fontWeight: 800 }}
+                      >
+                        {createCommentMutation.isPending ? 'Publicando...' : 'Comentar'}
+                      </Button>
+                      {createCommentMutation.isError ? (
+                        <Alert severity="error">{getErrorMessage(createCommentMutation.error)}</Alert>
+                      ) : null}
+                    </Stack>
+                  </Paper>
+                ) : null}
 
                 {commentsQuery.isLoading ? <LoadingState /> : null}
                 {commentsQuery.isError ? <Alert severity="error">{getErrorMessage(commentsQuery.error)}</Alert> : null}
                 {!commentsQuery.isLoading && comments.length === 0 ? (
                   <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, textAlign: 'center' }}>
                     <Typography sx={{ fontWeight: 800 }}>Sin comentarios</Typography>
-                    <Typography color="text.secondary">Sé el primero en agregar contexto a esta tarea.</Typography>
+                    <Typography color="text.secondary">
+                      {canWriteTask ? 'Sé el primero en agregar contexto a esta tarea.' : 'No hay comentarios para revisar.'}
+                    </Typography>
                   </Paper>
                 ) : null}
 
@@ -572,17 +607,19 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                           </Stack>
                           <Typography sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>{comment.content}</Typography>
                         </Box>
-                        <Tooltip title="Eliminar comentario">
-                          <IconButton
-                            aria-label="Eliminar comentario"
-                            color="error"
-                            onClick={() => deleteCommentMutation.mutate(comment.id)}
-                            disabled={deleteCommentMutation.isPending}
-                            size="small"
-                          >
-                            <DeleteOutlineOutlinedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        {canManageTask || comment.userId === user?.id ? (
+                          <Tooltip title="Eliminar comentario">
+                            <IconButton
+                              aria-label="Eliminar comentario"
+                              color="error"
+                              onClick={() => deleteCommentMutation.mutate(comment.id)}
+                              disabled={deleteCommentMutation.isPending}
+                              size="small"
+                            >
+                              <DeleteOutlineOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                       </Stack>
                     </Paper>
                   ))}
@@ -616,6 +653,7 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                       label="Estado"
                       size="small"
                       fullWidth
+                      disabled={!canWriteTask}
                       value={field.value}
                       onBlur={field.onBlur}
                       onChange={(event) => {
@@ -641,6 +679,7 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                       label="Prioridad"
                       size="small"
                       fullWidth
+                      disabled={!canWriteTask}
                       value={field.value}
                       onBlur={field.onBlur}
                       onChange={(event) => {
@@ -669,7 +708,7 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                       fullWidth
                       value={field.value}
                       onBlur={field.onBlur}
-                      disabled={membersQuery.isLoading}
+                      disabled={!canWriteTask || membersQuery.isLoading}
                       helperText={membersQuery.isLoading ? 'Cargando miembros...' : undefined}
                       onChange={(event) => {
                         const value = event.target.value
@@ -702,6 +741,7 @@ export function TaskDetailModal({ open, taskId, projectId, onClose }: TaskDetail
                       type="date"
                       size="small"
                       fullWidth
+                      disabled={!canWriteTask}
                       value={field.value}
                       onBlur={field.onBlur}
                       onChange={(event) => {
